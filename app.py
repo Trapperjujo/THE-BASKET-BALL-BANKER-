@@ -235,30 +235,62 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
     for team, p_list in current_injuries.items():
         mc_engine.injury_manager.set_injuries(team, p_list)
 
+    preds = []
+    for m in matchups:
+        # Run 10,000 simulations for institutional accuracy
+        sim = mc_engine.simulate_game(m['home'], m['away'], iterations=10000)
+        if "error" in sim: continue
+        
+        # Calculate Risk Score (Institutional variance measure)
+        # Narrower CI = Lower Risk (Higher Score)
+        ci_width = sim['ci'][1] - sim['ci'][0]
+        risk_score = round(1.0 - (min(ci_width, 15.0) / 30.0), 2)
+        
+        # Match with betting odds from cache
+        odds_val = 1.91 # Default -110 fallback
+        odds_path = ".tmp/cache/live_odds.json"
+        if os.path.exists(odds_path):
+            try:
+                with open(odds_path, "r") as f:
+                    odds_data = json.load(f)
+                    for game in odds_data:
+                        if m['home'] in game['home_team'] or game['home_team'] in m['home']:
+                            for bm in game['bookmakers']:
+                                for market in bm['markets']:
+                                    if market['key'] == 'h2h':
+                                        for outcome in market['outcomes']:
+                                            if (outcome['name'].split()[-1] in m['home'] and sim['home_win_prob'] > 50) or \
+                                               (outcome['name'].split()[-1] in m['away'] and sim['home_win_prob'] < 50):
+                                                odds_val = outcome['price']
+            except:
+                 pass
+        
+        prob_val = sim['home_win_prob'] / 100.0 if sim['home_win_prob'] > 50 else sim['away_win_prob'] / 100.0
+        winner_name = m['home'] if sim['home_win_prob'] > 50 else m['away']
+        
+        # Calculate EV (Expected Value)
+        ev_val = (prob_val * (odds_val - 1.0)) - ((1.0 - prob_val) * 1.0)
+        
+        # Stake calculation from Financial Model
+        stake_info = fin_model.get_smart_stake(prob_val, odds_val, ci_width)
+        
         # 1. Projected Scores
         h_score = round(sim['home_pts'])
         a_score = round(sim['away_pts'])
         
-        # 2. Identify Player Props (Top Scorer/Assists)
-        # We use USG% for scorers and AST% for facilitators
+        # 2. Identify Player Props
         path_p = "history/2026_season/player_advanced_2026.csv"
         home_scorer, home_passer = "TBD", "TBD"
         away_scorer, away_passer = "TBD", "TBD"
         
         if os.path.exists(path_p):
             df_p = pd.read_csv(path_p)
-            
             def get_leaders(team_name):
-                # Simple nickname matching for roster lookup
                 nick = team_name.split()[-1]
                 roster = df_p[df_p['Team'].str.contains(nick, na=False, case=False)]
-                
-                # Filter out simulated injuries (Accuracy Priority #1)
                 team_out = current_injuries.get(team_name, [])
                 roster = roster[~roster['Player'].isin(team_out)]
-                
                 if roster.empty: return "TBD", "TBD"
-                
                 top_s = roster.sort_values(by='USG%', ascending=False).iloc[0]['Player']
                 top_a = roster.sort_values(by='AST%', ascending=False).iloc[0]['Player']
                 return top_s, top_a
@@ -266,32 +298,13 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
             home_scorer, home_passer = get_leaders(m['home'])
             away_scorer, away_passer = get_leaders(m['away'])
             
-        prob_val = sim['home_win_prob'] / 100.0 if sim['home_win_prob'] > 50 else sim['away_win_prob'] / 100.0
-        winner_name = m['home'] if sim['home_win_prob'] > 50 else m['away']
-        
-        # Calculate EV (Expected Value)
-        # EV = (Prob * Odds) - 1.0
-        # If Odds are Decimal: EV = (Prob * (Odds-1)) - ((1-Prob) * 1)
-        ev_val = (prob_val * (odds_val - 1.0)) - ((1.0 - prob_val) * 1.0)
-        
         preds.append({
-            "home": m['home'],
-            "away": m['away'],
-            "winner": winner_name,
-            "home_score": h_score,
-            "away_score": a_score,
-            "home_scorer": home_scorer,
-            "home_passer": home_passer,
-            "away_scorer": away_scorer,
-            "away_passer": away_passer,
-            "prob": prob_val * 100,
-            "mc_prob": prob_val * 100,
-            "odds": odds_val,
-            "ev": ev_val,
-            "margin": sim['avg_margin'],
-            "total": sim['avg_total'],
-            "risk": risk_score,
-            "kelly_stake": stake_info / bankroll_val,
+            "home": m['home'], "away": m['away'], "winner": winner_name,
+            "home_score": h_score, "away_score": a_score,
+            "home_scorer": home_scorer, "home_passer": home_passer,
+            "away_scorer": away_scorer, "away_passer": away_passer,
+            "prob": prob_val * 100, "mc_prob": prob_val * 100,
+            "odds": odds_val, "ev": ev_val, "risk": risk_score,
             "suggested_bet": stake_info
         })
     
