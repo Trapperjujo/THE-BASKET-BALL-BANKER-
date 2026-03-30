@@ -235,51 +235,59 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
     for team, p_list in current_injuries.items():
         mc_engine.injury_manager.set_injuries(team, p_list)
 
-    preds = []
-    for m in matchups:
-        # Run 10,000 simulations for institutional accuracy
-        sim = mc_engine.simulate_game(m['home'], m['away'], iterations=10000)
-        if "error" in sim: continue
+        # 1. Projected Scores
+        h_score = round(sim['home_pts'])
+        a_score = round(sim['away_pts'])
         
-        # Match with betting odds from cache
-        odds_val = 1.91 # Default -110 fallback
-        odds_path = ".tmp/cache/live_odds.json"
-        if os.path.exists(odds_path):
-            try:
-                with open(odds_path, "r") as f:
-                    odds_data = json.load(f)
-                    for game in odds_data:
-                        if m['home'] in game['home_team'] or game['home_team'] in m['home']:
-                            # Get standard H2H price
-                            for bm in game['bookmakers']:
-                                for market in bm['markets']:
-                                    if market['key'] == 'h2h':
-                                        for outcome in market['outcomes']:
-                                            # We want the price for the predicted winner
-                                            if (outcome['name'].split()[-1] in m['home'] and sim['home_win_prob'] > 50) or \
-                                               (outcome['name'].split()[-1] in m['away'] and sim['home_win_prob'] < 50):
-                                                odds_val = outcome['price']
-            except:
-                pass
+        # 2. Identify Player Props (Top Scorer/Assists)
+        # We use USG% for scorers and AST% for facilitators
+        path_p = "history/2026_season/player_advanced_2026.csv"
+        home_scorer, home_passer = "TBD", "TBD"
+        away_scorer, away_passer = "TBD", "TBD"
         
+        if os.path.exists(path_p):
+            df_p = pd.read_csv(path_p)
+            
+            def get_leaders(team_name):
+                # Simple nickname matching for roster lookup
+                nick = team_name.split()[-1]
+                roster = df_p[df_p['Team'].str.contains(nick, na=False, case=False)]
+                
+                # Filter out simulated injuries (Accuracy Priority #1)
+                team_out = current_injuries.get(team_name, [])
+                roster = roster[~roster['Player'].isin(team_out)]
+                
+                if roster.empty: return "TBD", "TBD"
+                
+                top_s = roster.sort_values(by='USG%', ascending=False).iloc[0]['Player']
+                top_a = roster.sort_values(by='AST%', ascending=False).iloc[0]['Player']
+                return top_s, top_a
+
+            home_scorer, home_passer = get_leaders(m['home'])
+            away_scorer, away_passer = get_leaders(m['away'])
+            
         prob_val = sim['home_win_prob'] / 100.0 if sim['home_win_prob'] > 50 else sim['away_win_prob'] / 100.0
         winner_name = m['home'] if sim['home_win_prob'] > 50 else m['away']
         
-        # Calculate Risk Score (Institutional variance measure)
-        # Narrower CI = Lower Risk (Higher Score)
-        ci_width = sim['ci'][1] - sim['ci'][0]
-        risk_score = round(1.0 - (min(ci_width, 15.0) / 30.0), 2)
-        
-        # Use FinancialDecisionModel for stake
-        stake_info = fin_model.get_smart_stake(prob_val, odds_val, ci_width)
+        # Calculate EV (Expected Value)
+        # EV = (Prob * Odds) - 1.0
+        # If Odds are Decimal: EV = (Prob * (Odds-1)) - ((1-Prob) * 1)
+        ev_val = (prob_val * (odds_val - 1.0)) - ((1.0 - prob_val) * 1.0)
         
         preds.append({
             "home": m['home'],
             "away": m['away'],
             "winner": winner_name,
+            "home_score": h_score,
+            "away_score": a_score,
+            "home_scorer": home_scorer,
+            "home_passer": home_passer,
+            "away_scorer": away_scorer,
+            "away_passer": away_passer,
             "prob": prob_val * 100,
             "mc_prob": prob_val * 100,
             "odds": odds_val,
+            "ev": ev_val,
             "margin": sim['avg_margin'],
             "total": sim['avg_total'],
             "risk": risk_score,
@@ -309,31 +317,81 @@ with tab1:
                 # Conditional styling based on verdict
                 verdict_color = "#22c55e" if "LOCK" in p['verdict'] else "#eab308" if "VALUE" in p['verdict'] else "#94a3b8"
                 
+                # Conditional styling based on EV
+                ev_color = "#22c55e" if p['ev'] > 0.05 else "#94a3b8"
+                ev_tag = f"<span style='background: {ev_color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;'>+EV ALPHA: {p['ev']*100:.1f}%</span>" if p['ev'] > 0 else ""
+
                 st.markdown(f"""
                 <div class="prediction-card">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <p style='font-size: 0.8rem; color: #94a3b8; margin:0;'>{p['date']} • {p['conference']}</p>
-                        <span class="verdict-tag" style="background: {verdict_color}; color: white;">{p['verdict']}</span>
+                        <span class="verdict-tag" style="background: #a855f7; color: white;">PRO-MODEL: {int(p['prob'])}% CONFIDENCE</span>
+                        {ev_tag}
                     </div>
-                    <h3 style='margin: 10px 0;'>{p['away']} @ {p['home']}</h3>
-                    <div style="display: flex; gap: 20px; margin-bottom: 10px;">
-                        <div>
-                            <p class='metric-label'>Heuristic Prob</p>
-                            <p style='color: #22d3ee; font-weight: bold; font-size: 1.2rem;'>{int(p['prob']*100)}%</p>
-                        </div>
+                    
+                    <h2 style='margin: 10px 0; font-size: 1.4rem;'>{p['away']} @ {p['home']}</h2>
+                    
+                    <div style="background: rgba(34, 211, 238, 0.1); padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px solid rgba(34, 211, 238, 0.2);">
+                        <p style='margin:0; font-size: 0.85rem; color: #22d3ee; text-transform: uppercase; letter-spacing: 1px;'>🎯 PROJECTED FINAL</p>
+                        <h1 style='margin:5px 0; font-size: 2.2rem; display: flex; justify-content: space-between;'>
+                            <span>{p['home']} {int(p['home_score'])}</span>
+                            <span style='color: #94a3b8; font-size: 1.2rem; align-self: center;'>-</span>
+                            <span>{int(p['away_score'])} {p['away']}</span>
+                        </h1>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                         <div>
                             <p class='metric-label'>Monte Carlo Prob</p>
-                            <p style='color: #a855f7; font-weight: bold; font-size: 1.2rem;'>{int(p['mc_prob'])}%</p>
+                            <p style='color: #a855f7; font-weight: bold; font-size: 1.3rem;'>{int(p['mc_prob'])}%</p>
                         </div>
                         <div>
                             <p class='metric-label'>Risk Score</p>
-                            <p style='color: #f87171; font-weight: bold; font-size: 1.2rem;'>{p['risk']}</p>
+                            <p style='color: #f87171; font-weight: bold; font-size: 1.3rem;'>{p['risk']}</p>
                         </div>
                     </div>
-                    <hr style='border: 0.1px solid rgba(255,255,255,0.1)'>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <p class='metric-label'>Market Price: <b>{p['odds']}</b></p>
-                        <p style='color: #f58426; font-size: 1.2rem; margin: 0;'><b>🎯 SMART STAKE: ${p['suggested_stake']:.2f}</b></p>
+
+                    <div style='background: rgba(245, 132, 38, 0.05); padding: 15px; border-radius: 12px; border-left: 4px solid #f58426;'>
+                        <p style='margin:0; font-size: 0.8rem; color: #f58426; font-weight: bold;'>💎 PRO-REPORT: ALPHA PROP WATCH</p>
+                        <hr style='border:0; border-top: 1px solid rgba(245, 132, 38, 0.2); margin: 8px 0;'>
+                        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 15px;'>
+                            <div>
+                                <p style='margin:0; font-size: 0.7rem; color: #94a3b8;'>HOME STAT LEADERS</p>
+                                <p style='margin:0; font-size: 0.85rem;'>🔥 {p['home_scorer']} (USG%)</p>
+                                <p style='margin:0; font-size: 0.85rem;'>🕹️ {p['home_passer']} (AST%)</p>
+                            </div>
+                            <div>
+                                <p style='margin:0; font-size: 0.7rem; color: #94a3b8;'>AWAY STAT LEADERS</p>
+                                <p style='margin:0; font-size: 0.85rem;'>🔥 {p['away_scorer']} (USG%)</p>
+                                <p style='margin:0; font-size: 0.85rem;'>🕹️ {p['away_passer']} (AST%)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(34, 211, 238, 0.05); border-radius: 12px; border: 1px solid rgba(34, 211, 238, 0.1);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style='color: #94a3b8; font-size: 0.8rem;'>SUGGESTED WAGER</span>
+                            <span style='color: white; font-weight: bold;'>${p['suggested_bet']:.2f}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style='color: #94a3b8; font-size: 0.8rem;'>PREDICTED PROFIT</span>
+                            <span style='color: #22c55e; font-weight: bold;'>+${(p['suggested_bet'] * (p['odds'] - 1)):.2f}</span>
+                        </div>
+                        <hr style='border:0; border-top: 1px solid rgba(255,255,255,0.05); margin: 8px 0;'>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style='color: #22d3ee; font-weight: bold; font-size: 0.9rem;'>TOTAL RETURN</span>
+                            <span style='color: #22d3ee; font-weight: bold; font-size: 1.1rem;'>${(p['suggested_bet'] * p['odds']):.2f}</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <p class='metric-label'>Market Price (H2H)</p>
+                            <p style='margin:0; font-size: 1.2rem; font-weight: bold;'>{p['odds']}</p>
+                        </div>
+                        <div style='text-align: right;'>
+                            <p class='metric-label'>SMART STAKE (KELLY)</p>
+                            <span class="verdict-tag" style="background: #22c55e; color: white;">RUN SIMULATION ✅</span>
+                        </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)

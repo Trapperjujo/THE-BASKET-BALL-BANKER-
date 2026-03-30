@@ -98,6 +98,8 @@ class MonteCarloEngine:
             "away_win_prob": round(100 - win_prob, 1),
             "avg_margin": round(avg_margin, 1),
             "avg_total": round(total_points, 1),
+            "home_pts": round((total_points + avg_margin) / 2, 1),
+            "away_pts": round((total_points - avg_margin) / 2, 1),
             "ci": (round(ci_lower, 1), round(ci_upper, 1)),
             "iterations": iterations
         }
