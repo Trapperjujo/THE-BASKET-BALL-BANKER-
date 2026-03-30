@@ -1,15 +1,20 @@
 import requests
 import json
 import os
+import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def fetch_apisports_odds():
     """Fallback fetcher for THE-BASKET-BALL-BANKER- using API-Sports (RapidAPI)"""
-    api_key = os.getenv("API_SPORTS_KEY")
+    try:
+        api_key = st.secrets["API_SPORTS_KEY"]
+    except:
+        api_key = os.getenv("API_SPORTS_KEY")
+        
     if not api_key:
-        print("[ERROR] No API_SPORTS_KEY found in .env")
+        print("[ERROR] No API_SPORTS_KEY found in secrets or .env")
         return []
     
     # API-Sports NBA Odds endpoint (2025-2026 season)

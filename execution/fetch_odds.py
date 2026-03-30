@@ -1,15 +1,20 @@
 import requests
 import json
 import os
+import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def fetch_nba_odds():
     """Real fetcher for THE-BASKET-BALL-BANKER- using The Odds API"""
-    api_key = os.getenv("THE_ODDS_API_KEY")
+    try:
+        api_key = st.secrets["THE_ODDS_API_KEY"]
+    except:
+        api_key = os.getenv("THE_ODDS_API_KEY")
+        
     if not api_key:
-        print("[ERROR] No THE_ODDS_API_KEY found in .env")
+        print("[ERROR] No THE_ODDS_API_KEY found in secrets or .env")
         return []
     
     url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey={api_key}&regions=us&markets=h2h,spreads&oddsFormat=decimal"

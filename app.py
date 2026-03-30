@@ -1,9 +1,10 @@
+import requests
+import json
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime
-import os
-import json
 from execution.compute_nba_alpha import NBAAlphaEngine
 from execution.monte_carlo_engine import MonteCarloEngine
 from execution.playoff_sim import PlayoffSimulator
@@ -151,19 +152,20 @@ with st.sidebar:
                 if players:
                     st.session_state.out_players[team] = players
             
-            # 3. Live Odds (Primary & Fallback)
+            # 3. Live Odds (Primary, Secondary, Tertiary)
             try:
                 subprocess.run(["python", "execution/fetch_odds.py"])
                 subprocess.run(["python", "execution/fetch_odds_apisports.py"])
-            except:
-                pass
+                subprocess.run(["python", "execution/fetch_odds_sportspage.py"])
+            except Exception as e:
+                print(f"Sync error: {str(e)}")
             
             # 4. Daily Scoreboard
             client = NBAClient()
             client.get_todays_games()
             
             st.cache_data.clear()
-            st.success("Universal Sync Complete! (All Sources Online)")
+            st.success("Universal Sync Complete! (Triple-Source Markets Online)")
             st.rerun()
 
 # --- DATA LAYER ---
@@ -249,25 +251,37 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
         ci_width = sim['ci'][1] - sim['ci'][0]
         risk_score = round(1.0 - (min(ci_width, 15.0) / 30.0), 2)
         
-        # Match with betting odds
+        # 3. Match with betting odds (Triple Source Fallback)
         odds_val = 1.91 
-        odds_path = ".tmp/cache/live_odds.json"
-        if os.path.exists(odds_path):
-            try:
-                with open(odds_path, "r") as f:
-                    odds_data = json.load(f)
-                    for game in odds_data:
-                        if m['home'] in game['home_team'] or game['home_team'] in m['home']:
-                            for bm in game['bookmakers']:
-                                for market in bm['markets']:
-                                    if market['key'] == 'h2h':
-                                        for outcome in market['outcomes']:
-                                            # Nickname match
-                                            if (outcome['name'].split()[-1] in m['home'] and sim['home_win_prob'] > 50) or \
-                                               (outcome['name'].split()[-1] in m['away'] and sim['home_win_prob'] < 50):
-                                                odds_val = outcome['price']
-            except:
-                 pass
+        found_odds = False
+        # Try all three data sources sequentially
+        for op in [".tmp/cache/live_odds.json", ".tmp/cache/live_odds_alt.json", ".tmp/cache/live_odds_sportspage.json"]:
+            if os.path.exists(op):
+                try:
+                    with open(op, "r") as f:
+                        data = json.load(f)
+                        for g in data:
+                            # Robust matching across different API naming conventions
+                            h_name = g.get('home_team', str(g))
+                            a_name = g.get('away_team', str(g))
+                            if m['home'].lower() in h_name.lower() or h_name.lower() in m['home'].lower():
+                                # Generalized extractor for multiple JSON formats
+                                if "bookmakers" in g: # The Odds API format
+                                   for bm in g['bookmakers']:
+                                       for market in bm['markets']:
+                                           if market['key'] == 'h2h':
+                                               for outcome in market['outcomes']:
+                                                   if (outcome['name'].split()[-1].lower() in m['home'].lower() and sim['home_win_prob'] > 50) or \
+                                                      (outcome['name'].split()[-1].lower() in m['away'].lower() and sim['home_win_prob'] < 50):
+                                                       odds_val = outcome['price']
+                                                       found_odds = True
+                                                       break
+                                elif "price" in str(g): # Simple fallback format
+                                   odds_val = g.get('price', 1.91)
+                                   found_odds = True
+                            if found_odds: break
+                    if found_odds: break
+                except: continue
         
         prob_val = sim['home_win_prob'] / 100.0 if sim['home_win_prob'] > 50 else sim['away_win_prob'] / 100.0
         winner_name = m['home'] if sim['home_win_prob'] > 50 else m['away']
