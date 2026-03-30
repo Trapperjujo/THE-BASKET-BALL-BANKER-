@@ -80,7 +80,12 @@ with st.sidebar:
     st.title("THE BANKER 🤖")
     st.write("Institutional NBA Analytics")
     
-    api_key = st.text_input("The Odds API Key", type="password", placeholder="Enter your key...")
+    api_key = st.text_input(
+        "The Odds API Key", 
+        type="password", 
+        placeholder="Enter your key...",
+        help="For the most accurate, real-time NBA predictions, we recommend signing up for a free tier at [The Odds API](https://the-odds-api.com/) and entering your key here for live market data."
+    )
     st.divider()
     
     bankroll = st.number_input("Total Bankroll (CAD)", value=1000.0, step=100.0)
