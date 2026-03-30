@@ -231,23 +231,23 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
     
     fin_model = FinancialDecisionModel(bankroll=bankroll_val, kelly_fraction=kelly_val)
     
-    # Apply session injuries to manager
+    # 1. Apply session injuries to manager
     for team, p_list in current_injuries.items():
         mc_engine.injury_manager.set_injuries(team, p_list)
 
     preds = []
+    # 2. Iterate through matchups and perform simulations
     for m in matchups:
-        # Run 10,000 simulations for institutional accuracy
         sim = mc_engine.simulate_game(m['home'], m['away'], iterations=10000)
-        if "error" in sim: continue
-        
-        # Calculate Risk Score (Institutional variance measure)
-        # Narrower CI = Lower Risk (Higher Score)
+        if "error" in sim:
+            continue
+            
+        # 3. Calculate Display Metrics
         ci_width = sim['ci'][1] - sim['ci'][0]
         risk_score = round(1.0 - (min(ci_width, 15.0) / 30.0), 2)
         
-        # Match with betting odds from cache
-        odds_val = 1.91 # Default -110 fallback
+        # Match with betting odds
+        odds_val = 1.91 
         odds_path = ".tmp/cache/live_odds.json"
         if os.path.exists(odds_path):
             try:
@@ -259,6 +259,7 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
                                 for market in bm['markets']:
                                     if market['key'] == 'h2h':
                                         for outcome in market['outcomes']:
+                                            # Nickname match
                                             if (outcome['name'].split()[-1] in m['home'] and sim['home_win_prob'] > 50) or \
                                                (outcome['name'].split()[-1] in m['away'] and sim['home_win_prob'] < 50):
                                                 odds_val = outcome['price']
@@ -267,18 +268,10 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
         
         prob_val = sim['home_win_prob'] / 100.0 if sim['home_win_prob'] > 50 else sim['away_win_prob'] / 100.0
         winner_name = m['home'] if sim['home_win_prob'] > 50 else m['away']
-        
-        # Calculate EV (Expected Value)
         ev_val = (prob_val * (odds_val - 1.0)) - ((1.0 - prob_val) * 1.0)
-        
-        # Stake calculation from Financial Model
         stake_info = fin_model.get_smart_stake(prob_val, odds_val, ci_width)
         
-        # 1. Projected Scores
-        h_score = round(sim['home_pts'])
-        a_score = round(sim['away_pts'])
-        
-        # 2. Identify Player Props
+        # 4. Identify Player Props
         path_p = "history/2026_season/player_advanced_2026.csv"
         home_scorer, home_passer = "TBD", "TBD"
         away_scorer, away_passer = "TBD", "TBD"
@@ -300,7 +293,7 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
             
         preds.append({
             "home": m['home'], "away": m['away'], "winner": winner_name,
-            "home_score": h_score, "away_score": a_score,
+            "home_score": round(sim['home_pts']), "away_score": round(sim['away_pts']),
             "home_scorer": home_scorer, "home_passer": home_passer,
             "away_scorer": away_scorer, "away_passer": away_passer,
             "prob": prob_val * 100, "mc_prob": prob_val * 100,
@@ -327,10 +320,7 @@ with tab1:
     if preds:
         for p in preds:
             with st.container():
-                # Conditional styling based on verdict
-                verdict_color = "#22c55e" if "LOCK" in p['verdict'] else "#eab308" if "VALUE" in p['verdict'] else "#94a3b8"
-                
-                # Conditional styling based on EV
+                # Conditional styling based on EV (Expected Value)
                 ev_color = "#22c55e" if p['ev'] > 0.05 else "#94a3b8"
                 ev_tag = f"<span style='background: {ev_color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;'>+EV ALPHA: {p['ev']*100:.1f}%</span>" if p['ev'] > 0 else ""
 
