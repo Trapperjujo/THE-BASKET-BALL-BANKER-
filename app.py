@@ -1,9 +1,11 @@
 import requests
 import json
 import os
-import streamlit as st
 import pandas as pd
 import numpy as np
+import streamlit as st
+import subprocess
+import textwrap
 from datetime import datetime
 from execution.compute_nba_alpha import NBAAlphaEngine
 from execution.monte_carlo_engine import MonteCarloEngine
@@ -350,13 +352,17 @@ with tab1:
             with st.container():
                 # Defensive accessors with safe defaults
                 prob_val = p.get('prob', 50.0)
+                mc_prob = p.get('mc_prob', 50.0)
                 ev_val = p.get('ev', 0.0)
+                risk_val = p.get('risk', 'N/A')
+                suggested_bet = p.get('suggested_bet', 0.0)
+                odds = p.get('odds', 1.91)
                 
                 # Dynamic Styling
                 ev_color = "#22c55e" if ev_val > 0.05 else "#94a3b8"
                 ev_tag = f"<span style='background: {ev_color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;'>+EV ALPHA: {ev_val*100:.1f}%</span>" if ev_val > 0 else ""
 
-                st.markdown(f"""
+                st.markdown(textwrap.dedent(f"""
                 <div class="prediction-card">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span class="verdict-tag" style="background: #a855f7; color: white;">PRO-MODEL: {int(prob_val)}% CONFIDENCE</span>
@@ -377,11 +383,11 @@ with tab1:
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                         <div>
                             <p class='metric-label'>Monte Carlo Prob</p>
-                            <p style='color: #a855f7; font-weight: bold; font-size: 1.3rem;'>{int(p.get('mc_prob', 50))}%</p>
+                            <p style='color: #a855f7; font-weight: bold; font-size: 1.3rem;'>{int(mc_prob)}%</p>
                         </div>
                         <div>
                             <p class='metric-label'>Risk Score</p>
-                            <p style='color: #f87171; font-weight: bold; font-size: 1.3rem;'>{p.get('risk', 'N/A')}</p>
+                            <p style='color: #f87171; font-weight: bold; font-size: 1.3rem;'>{risk_val}</p>
                         </div>
                     </div>
 
@@ -405,23 +411,23 @@ with tab1:
                     <div style="margin-top: 20px; padding: 15px; background: rgba(34, 211, 238, 0.05); border-radius: 12px; border: 1px solid rgba(34, 211, 238, 0.1);">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                             <span style='color: #94a3b8; font-size: 0.8rem;'>SUGGESTED WAGER</span>
-                            <span style='color: white; font-weight: bold;'>${float(p.get('suggested_bet', 0.0)):.2f}</span>
+                            <span style='color: white; font-weight: bold;'>${float(suggested_bet):.2f}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                             <span style='color: #94a3b8; font-size: 0.8rem;'>PREDICTED PROFIT</span>
-                            <span style='color: #22c55e; font-weight: bold;'>+${(float(p.get('suggested_bet', 0.0)) * (float(p.get('odds', 1.91)) - 1)):.2f}</span>
+                            <span style='color: #22c55e; font-weight: bold;'>+${(float(suggested_bet) * (float(odds) - 1)):.2f}</span>
                         </div>
                         <hr style='border:0; border-top: 1px solid rgba(255,255,255,0.05); margin: 8px 0;'>
                         <div style="display: flex; justify-content: space-between;">
                             <span style='color: #22d3ee; font-weight: bold; font-size: 0.9rem;'>TOTAL RETURN</span>
-                            <span style='color: #22d3ee; font-weight: bold; font-size: 1.1rem;'>${(float(p.get('suggested_bet', 0.0)) * float(p.get('odds', 1.91))):.2f}</span>
+                            <span style='color: #22d3ee; font-weight: bold; font-size: 1.1rem;'>${(float(suggested_bet) * float(odds)):.2f}</span>
                         </div>
                     </div>
-
+                    
                     <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <p class='metric-label'>Market Price (H2H)</p>
-                            <p style='margin:0; font-size: 1.2rem; font-weight: bold;'>{p.get('odds', 1.91)}</p>
+                            <p style='margin:0; font-size: 1.2rem; font-weight: bold;'>{odds}</p>
                         </div>
                         <div style='text-align: right;'>
                             <p class='metric-label'>SMART STAKE (KELLY)</p>
@@ -429,7 +435,7 @@ with tab1:
                         </div>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """), unsafe_allow_html=True)
     else:
         st.warning("No live predictions. Model requires active matchups.")
 
@@ -485,68 +491,68 @@ with tab5:
     st.info("💡 **Institutional Knowledge**: These metrics are the foundation of our 10,000-iteration simulations. Understanding them is the difference between guessing and investing.")
     
     st.success("🧠 **MASTER STRATEGY: THE 'HIDDEN ALPHA' (TS% + USG%)**")
-    st.markdown("""
-    This is a sophisticated edge-seeking strategy focused on identifying efficient role players primed for a statistical breakout *before* the market adjusts.
-    """)
+    st.markdown(textwrap.dedent("""
+        This is a sophisticated edge-seeking strategy focused on identifying efficient role players primed for a statistical breakout *before* the market adjusts.
+    """))
     
     with st.expander("📊 STEP 1: UNDERSTAND THE METRICS"):
-        st.markdown("""
-        | Metric | What It Measures | Why It Matters |
-        | :--- | :--- | :--- |
-        | **TS% (True Shooting %)** | Scoring efficiency (2PT, 3PT, FT) | High TS% = Player scores efficiently when given chances |
-        | **USG% (Usage Rate)** | % of team possessions used while on court | Low USG% = Player isn't heavily relied upon *yet* |
-        
-        **The Thesis**: A player with **High TS% (>60%)** and **Low USG% (<20%)** is a compressed spring. When a high-usage teammate is **OUT**, the "Hidden Alpha" doesn't need to change *how* they play—they just need more *opportunities* to maintain their high efficiency at scale.
-        """)
+        st.markdown(textwrap.dedent("""
+            | Metric | What It Measures | Why It Matters |
+            | :--- | :--- | :--- |
+            | **TS% (True Shooting %)** | Scoring efficiency (2PT, 3PT, FT) | High TS% = Player scores efficiently when given chances |
+            | **USG% (Usage Rate)** | % of team possessions used while on court | Low USG% = Player isn't heavily relied upon *yet* |
+            
+            **The Thesis**: A player with **High TS% (>60%)** and **Low USG% (<20%)** is a compressed spring. When a high-usage teammate is **OUT**, the "Hidden Alpha" doesn't need to change *how* they play—they just need more *opportunities* to maintain their high efficiency at scale.
+        """))
         
     with st.expander("🛠️ STEP 2: FILTER & DATA SOURCES"):
-        st.markdown("""
-        - **Option A: StatMuse (NLP Query)**: *"players with TS% > 60 and USG% < 20 and MPG > 20 this season"*
-        - **Option B: Basketball-Reference**: Sort the [Advanced Stats](https://www.basketball-reference.com/leagues/NBA_2025_advanced.html) table by TS% desc and scan for USG% < 20.
-        - **Option C: Cleaning the Glass**: Best for filtering out 'Garbage Time' noise to find true rotational alphas.
-        """)
+        st.markdown(textwrap.dedent("""
+            - **Option A: StatMuse (NLP Query)**: *"players with TS% > 60 and USG% < 20 and MPG > 20 this season"*
+            - **Option B: Basketball-Reference**: Sort the [Advanced Stats](https://www.basketball-reference.com/leagues/NBA_2025_advanced.html) table by TS% desc and scan for USG% < 20.
+            - **Option C: Cleaning the Glass**: Best for filtering out 'Garbage Time' noise to find true rotational alphas.
+        """))
         
     with st.expander("🎯 STEP 3: APPLY BETTING FILTERS"):
-        st.markdown("""
-        Once you have your candidate list, layer on these context filters:
-        1. **The Role Vacuum**: Is a high-usage starter (25%+) out or limited?
-        2. **The Defense Factor**: Is the opponent's Defensive Rating in the Bottom 10?
-        3. **The 'Pace Up' Spot**: Look for matchups between two fast teams (Pace > 102).
-        
-        > **Banker's Tip**: Don't blindly bet the #2 scorer when the #1 is out—they will draw the primary stopper. Look for the **#3 or #4 option** who gets wide-open looks as the defense collapses.
-        """)
+        st.markdown(textwrap.dedent("""
+            Once you have your candidate list, layer on these context filters:
+            1. **The Role Vacuum**: Is a high-usage starter (25%+) out or limited?
+            2. **The Defense Factor**: Is the opponent's Defensive Rating in the Bottom 10?
+            3. **The 'Pace Up' Spot**: Look for matchups between two fast teams (Pace > 102).
+            
+            > **Banker's Tip**: Don't blindly bet the #2 scorer when the #1 is out—they will draw the primary stopper. Look for the **#3 or #4 option** who gets wide-open looks as the defense collapses.
+        """))
         
     with st.expander("💰 STEP 4: IDENTIFY PROP VALUE"):
-        st.markdown("""
-        | Prop Type | Why It Works |
-        | :--- | :--- |
-        | **Points OVER** | Efficient scorer + increased usage = clear path to hitting over |
-        | **PRA (PTS+REB+AST)** | Captures all-around contribution if the floor-game role expands |
-        | **Fantasy Points** | Efficient production scales perfectly in fantasy formats |
-        
-        **❌ Red Flags to Avoid**:
-        - Player's efficiency is buoyed by garbage time.
-        - Team just acquired a new star (usage may stay flat).
-        - Prop line has already jumped by 4+ points (market has adjusted).
-        """)
+        st.markdown(textwrap.dedent("""
+            | Prop Type | Why It Works |
+            | :--- | :--- | :--- |
+            | **Points OVER** | Efficient scorer + increased usage = clear path to hitting over |
+            | **PRA (PTS+REB+AST)** | Captures all-around contribution if the floor-game role expands |
+            | **Fantasy Points** | Efficient production scales perfectly in fantasy formats |
+            
+            **❌ Red Flags to Avoid**:
+            - Player's efficiency is buoyed by garbage time.
+            - Team just acquired a new star (usage may stay flat).
+            - Prop line has already jumped by 4+ points (market has adjusted).
+        """))
         
     with st.expander("🔄 STEP 5: MONITOR & ACT FAST"):
-        st.markdown("""
-        - **Set Alerts**: Injury news on Twitter/Rotowire is your cue to act.
-        - **Track Movement**: Use DraftKings/FanDuel to see if the prop line is still lagging behind the news.
-        - **Bet Early**: Speed is everything. Markets price players based on *recent role*, not *potential role*.
-        """)
+        st.markdown(textwrap.dedent("""
+            - **Set Alerts**: Injury news on Twitter/Rotowire is your cue to act.
+            - **Track Movement**: Use DraftKings/FanDuel to see if the prop line is still lagging behind the news.
+            - **Bet Early**: Speed is everything. Markets price players based on *recent role*, not *potential role*.
+        """))
 
-    st.markdown("""
-    <div style='padding: 20px; background: rgba(245, 132, 38, 0.1); border-radius: 12px; border: 1px solid #f58426;'>
-        <h4 style='margin:0; color: #f58426;'>🧪 QUICK WORKFLOW EXAMPLE</h4>
-        <p style='font-size: 0.85rem; margin-top: 10px;'>
-            <b>1. Scenario</b>: Embiid (35% USG) is OUT for the 76ers.<br>
-            <b>2. Selection</b>: Filter identifies <b>Guerschon Yabusele</b> (65% TS%, 14% USG).<br>
-            <b>3. The Play</b>: Line sits at 8.5 Points. You bet the <b>OVER</b> before the market realizes he's playing 30+ minutes tonight.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(textwrap.dedent("""
+        <div style='padding: 20px; background: rgba(245, 132, 38, 0.1); border-radius: 12px; border: 1px solid #f58426;'>
+            <h4 style='margin:0; color: #f58426;'>🧪 QUICK WORKFLOW EXAMPLE</h4>
+            <p style='font-size: 0.85rem; margin-top: 10px;'>
+                <b>1. Scenario</b>: Embiid (35% USG) is OUT for the 76ers.<br>
+                <b>2. Selection</b>: Filter identifies <b>Guerschon Yabusele</b> (65% TS%, 14% USG).<br>
+                <b>3. The Play</b>: Line sits at 8.5 Points. You bet the <b>OVER</b> before the market realizes he's playing 30+ minutes tonight.
+            </p>
+        </div>
+    """), unsafe_allow_html=True)
 
 # Footer
 st.divider()
