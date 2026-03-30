@@ -149,18 +149,21 @@ with st.sidebar:
             auto_injuries = rw.scrape_injuries()
             for team, players in auto_injuries.items():
                 if players:
-                    # Update session state with scraped injuries
                     st.session_state.out_players[team] = players
             
-            # 3. Live Odds
-            fetch_nba_odds()
+            # 3. Live Odds (Primary & Fallback)
+            try:
+                subprocess.run(["python", "execution/fetch_odds.py"])
+                subprocess.run(["python", "execution/fetch_odds_apisports.py"])
+            except:
+                pass
             
             # 4. Daily Scoreboard
             client = NBAClient()
             client.get_todays_games()
             
             st.cache_data.clear()
-            st.success("Universal Sync Complete. Data Source: Official NBA.com API")
+            st.success("Universal Sync Complete! (All Sources Online)")
             st.rerun()
 
 # --- DATA LAYER ---
@@ -446,51 +449,75 @@ with tab4:
         st.warning("Stats file missing. Run scraper.")
 
 with tab5:
-    st.write("### 📖 PRO-METRIC STRATEGY GUIDE")
+    st.write("### 📖 THE BANKER'S PRO-METRIC GUIDE")
     st.write("Master the institutional metrics used to identify alpha in the player market.")
+    st.markdown("---")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("""
-        <div class="metric-card">
-            <h4 style='color: #f58426; margin:0;'>🎯 PER (Efficiency)</h4>
-            <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 15.0 Avg | 20.0 All-Star | 25.0 MVP</p>
-            <p style='font-size: 0.9rem;'>Holistic per-minute production. Perfect for identifying under-utilized bench stars who deserve more minutes.</p>
-        </div>
-        <div class="metric-card">
-            <h4 style='color: #22d3ee; margin:0;'>🔥 TS% (True Shooting)</h4>
-            <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 0.62+ Elite | 0.58 Good | < 0.54 Poor</p>
-            <p style='font-size: 0.9rem;'>The ultimate measure of scoring efficiency—factors in 2PT, 3PT, and FT volume into one number.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    with col2:
-        st.markdown("""
-        <div class="metric-card">
-            <h4 style='color: #a855f7; margin:0;'>🕹️ USG% (Usage)</h4>
-            <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 30%+ Alpha | 20% Starter | < 15% Role</p>
-            <p style='font-size: 0.9rem;'>Volume metric. Identifies who handles the rock. Essential for projecting stat spikes when teammates are injured.</p>
-        </div>
-        <div class="metric-card">
-            <h4 style='color: #22c55e; margin:0;'>🛡️ VORP / BPM</h4>
-            <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 4.0+ VORP | 6.0+ BPM (Elite)</p>
-            <p style='font-size: 0.9rem;'>Impact relative to a replacement player. Identifies the true "Engines" that drive team win probability.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    st.success("🧠 **STRATEGIC ALPHA: THE USAGE SPIKE**")
-    st.write("""
-    The most profitable use of this dashboard is identifying **Usage Vacuum**. When a star player is marked **OUT** in the Sidebar Injury Reporter, their **USG% (Usage)** must be redistributed.
+    st.info("💡 **Institutional Knowledge**: These metrics are the foundation of our 10,000-iteration simulations. Understanding them is the difference between guessing and investing.")
     
-    1. Look for players on that team with **High Efficiency (TS%)** but **Low Usage (USG%)**. 
-    2. These "hidden alphas" are now primed for a massive statistical spike. 
-    3. Use this to find value in over/under player props before the market adjusts.
+    st.success("🧠 **MASTER STRATEGY: THE 'HIDDEN ALPHA' (TS% + USG%)**")
+    st.markdown("""
+    This is a sophisticated edge-seeking strategy focused on identifying efficient role players primed for a statistical breakout *before* the market adjusts.
     """)
-    if os.path.exists(path):
-        df_players = pd.read_csv(path)
-        st.dataframe(df_players[['Player', 'Team', 'PER', 'TS%', 'USG%', 'BPM', 'VORP']].sort_values(by='PER', ascending=False).head(50), use_container_width=True)
-    else:
-        st.warning("Stats file missing. Run scraper.")
+    
+    with st.expander("📊 STEP 1: UNDERSTAND THE METRICS"):
+        st.markdown("""
+        | Metric | What It Measures | Why It Matters |
+        | :--- | :--- | :--- |
+        | **TS% (True Shooting %)** | Scoring efficiency (2PT, 3PT, FT) | High TS% = Player scores efficiently when given chances |
+        | **USG% (Usage Rate)** | % of team possessions used while on court | Low USG% = Player isn't heavily relied upon *yet* |
+        
+        **The Thesis**: A player with **High TS% (>60%)** and **Low USG% (<20%)** is a compressed spring. When a high-usage teammate is **OUT**, the "Hidden Alpha" doesn't need to change *how* they play—they just need more *opportunities* to maintain their high efficiency at scale.
+        """)
+        
+    with st.expander("🛠️ STEP 2: FILTER & DATA SOURCES"):
+        st.markdown("""
+        - **Option A: StatMuse (NLP Query)**: *"players with TS% > 60 and USG% < 20 and MPG > 20 this season"*
+        - **Option B: Basketball-Reference**: Sort the [Advanced Stats](https://www.basketball-reference.com/leagues/NBA_2025_advanced.html) table by TS% desc and scan for USG% < 20.
+        - **Option C: Cleaning the Glass**: Best for filtering out 'Garbage Time' noise to find true rotational alphas.
+        """)
+        
+    with st.expander("🎯 STEP 3: APPLY BETTING FILTERS"):
+        st.markdown("""
+        Once you have your candidate list, layer on these context filters:
+        1. **The Role Vacuum**: Is a high-usage starter (25%+) out or limited?
+        2. **The Defense Factor**: Is the opponent's Defensive Rating in the Bottom 10?
+        3. **The 'Pace Up' Spot**: Look for matchups between two fast teams (Pace > 102).
+        
+        > **Banker's Tip**: Don't blindly bet the #2 scorer when the #1 is out—they will draw the primary stopper. Look for the **#3 or #4 option** who gets wide-open looks as the defense collapses.
+        """)
+        
+    with st.expander("💰 STEP 4: IDENTIFY PROP VALUE"):
+        st.markdown("""
+        | Prop Type | Why It Works |
+        | :--- | :--- |
+        | **Points OVER** | Efficient scorer + increased usage = clear path to hitting over |
+        | **PRA (PTS+REB+AST)** | Captures all-around contribution if the floor-game role expands |
+        | **Fantasy Points** | Efficient production scales perfectly in fantasy formats |
+        
+        **❌ Red Flags to Avoid**:
+        - Player's efficiency is buoyed by garbage time.
+        - Team just acquired a new star (usage may stay flat).
+        - Prop line has already jumped by 4+ points (market has adjusted).
+        """)
+        
+    with st.expander("🔄 STEP 5: MONITOR & ACT FAST"):
+        st.markdown("""
+        - **Set Alerts**: Injury news on Twitter/Rotowire is your cue to act.
+        - **Track Movement**: Use DraftKings/FanDuel to see if the prop line is still lagging behind the news.
+        - **Bet Early**: Speed is everything. Markets price players based on *recent role*, not *potential role*.
+        """)
+
+    st.markdown("""
+    <div style='padding: 20px; background: rgba(245, 132, 38, 0.1); border-radius: 12px; border: 1px solid #f58426;'>
+        <h4 style='margin:0; color: #f58426;'>🧪 QUICK WORKFLOW EXAMPLE</h4>
+        <p style='font-size: 0.85rem; margin-top: 10px;'>
+            <b>1. Scenario</b>: Embiid (35% USG) is OUT for the 76ers.<br>
+            <b>2. Selection</b>: Filter identifies <b>Guerschon Yabusele</b> (65% TS%, 14% USG).<br>
+            <b>3. The Play</b>: Line sits at 8.5 Points. You bet the <b>OVER</b> before the market realizes he's playing 30+ minutes tonight.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Footer
 st.divider()
