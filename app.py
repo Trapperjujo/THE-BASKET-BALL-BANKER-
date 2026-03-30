@@ -176,6 +176,21 @@ tab1, tab2, tab3, tab4 = st.tabs(["AI Predictions 🎯", "Playoff Simulation �
 
 with tab1:
     st.write("### Institutional Prediction Feed")
+    
+    with st.expander("📖 Dashboard Legend & User Guide"):
+        st.markdown("""
+        #### Understanding the NBA Alpha Terminal
+        
+        *   **Heuristic Prob**: Base model confidence derived from Team EPM and historical matchups. It sets the baseline expectation.
+        *   **Monte Carlo Prob**: Probabilistic confidence from 1,000+ simulations. This accounts for team volatility and Gaussian distribution of outcomes.
+        *   **Risk Score (0.0 - 1.0)**: Measures simulation variance. A high score means the simulation results were widely spread (high uncertainty).
+        *   **Market Price**: The current decimal odds from the bookmaker.
+        *   **🎯 SMART STAKE**: The mathematically optimal wager in CAD using a **0.25 Adjusted Kelly Criterion**. It factors in your bankroll and the simulation's risk to maximize long-term growth.
+        
+        ---
+        **Strategy**: Look for games where **Monte Carlo Prob** is >10% higher than the implied market odds for maximum +EV value.
+        """)
+        
     preds = load_predictions(bankroll, st.session_state.out_players)
     
     if preds:
