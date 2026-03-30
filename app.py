@@ -87,17 +87,35 @@ with st.sidebar:
     st.info("Applying Financial Decision Model (0.25 Kelly Base)")
     
     st.divider()
-    st.subheader("🏥 Injury Reporter")
-    # Quick select for top teams in 2026 model
-    team_to_report = st.selectbox("Select Team", ["LAL", "OKC", "DEN", "SAS", "DET", "BOS", "NYK", "CLE", "HOU", "MIN"])
-    
-    # Load player list for this team
-    path = "history/2026_season/player_advanced_2026.csv"
-    if os.path.exists(path):
-        df_p = pd.read_csv(path)
-        players = sorted(df_p[df_p['Team'] == team_to_report]['Player'].tolist())
-        selected_out = st.multiselect("Active Injuries", players, key=f"inj_{team_to_report}")
-        st.session_state.out_players[team_to_report] = selected_out
+    with st.expander("🏥 SIMULATE INJURY REPORT"):
+        st.write("Mark players as **OUT** to adjust team ratings.")
+        
+        # Pull dynamic team list from data if available
+        path = "history/2026_season/player_advanced_2026.csv"
+        if os.path.exists(path):
+            df_p = pd.read_csv(path)
+            all_teams = sorted([str(t) for t in df_p['Team'].unique() if pd.notna(t) and t not in ['2TM', '3TM']])
+            team_to_report = st.selectbox("Select Team", all_teams)
+            
+            # Load player list for this team
+            team_players = sorted(df_p[df_p['Team'] == team_to_report]['Player'].tolist())
+            selected_out = st.multiselect("Active Injuries", team_players, key=f"inj_{team_to_report}")
+            st.session_state.out_players[team_to_report] = selected_out
+            
+            if st.button("🗑️ Clear All Injuries"):
+                st.session_state.out_players = {}
+                st.rerun()
+        else:
+            st.warning("Player data missing for reporter.")
+
+    # --- ACTIVE INJURY SUMMARY ---
+    total_out = sum(len(v) for v in st.session_state.out_players.values() if v)
+    if total_out > 0:
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🏥 CURRENTLY OUT (SIM)")
+        for team, players in st.session_state.out_players.items():
+            if players:
+                st.sidebar.write(f"**{team}**: {', '.join(players)}")
     
     st.divider()
     if st.button("🔄 Sync 2026 Model"):
@@ -267,6 +285,23 @@ with tab3:
 
 with tab4:
     st.write("### ⚡ Advanced Metrics Leaderboard")
+    
+    with st.expander("📊 Analytics Legend & Key"):
+        st.markdown("""
+        #### How to Interpret Advanced NBA Metrics
+        
+        | Metric | Definition | Banker's Tip |
+| :--- | :--- | :--- |
+| **PER** | **Player Efficiency Rating**: Per-minute productivity (League Avg = 15.0). | Identifies dominant performers regardless of pure scoring volume. |
+| **TS%** | **True Shooting %**: Measures scoring efficiency including 3PT and FT. | Crucial for over/under point props—efficiency usually beats volume. |
+| **USG%** | **Usage Rate**: Percentage of team plays used by a player. | **High Usage + Teammate Injury = MASSIVE volume spike** for props. |
+| **BPM** | **Box Plus/Minus**: Box-score estimate of impact per 100 possessions. | Highlights elite defenders or "super-role" players. |
+| **VORP** | **Value Over Replacement**: Cumulative impact relative to an average backup. | Best for long-term MVP-caliber player valuation. |
+
+---
+**Strategy**: Look for **High Usage (USG%)** players with **High Efficiency (TS%)**—these are the "Banker's" primary targets for statistical consistency.
+        """)
+        
     path = "history/2026_season/player_advanced_2026.csv"
     if os.path.exists(path):
         df_players = pd.read_csv(path)
