@@ -7,18 +7,40 @@ import sys
 sys.path.append(os.getcwd())
 from execution.injuries import InjuryManager
 
+from execution.injuries import InjuryManager
+from execution.nba_api_client import NBAClient
+
 class MonteCarloEngine:
     """
     Probabilistic NBA Game Forecaster
-    Uses Team Ratings (Off/Def/Pace) and Gaussian distributions
-    to simulate 1,000+ game outcomes.
+    Uses Institutional Team Ratings (Off/Def/Pace) and Gaussian distributions
+    to simulate 10,000+ game outcomes.
     """
     
     def __init__(self):
+        self.client = NBAClient()
         self.team_stats_path = "history/2026_season/team_advanced_2026.csv"
-        self.team_df = pd.read_csv(self.team_stats_path) if os.path.exists(self.team_stats_path) else pd.DataFrame()
+        self.live_stats_path = ".tmp/cache/live_team_ratings_2026.csv"
+        
+        # Prefer live ratings from nba_api
+        if os.path.exists(self.live_stats_path):
+            self.team_df = pd.read_csv(self.live_stats_path)
+            self.is_live = True
+        else:
+            self.team_df = pd.read_csv(self.team_stats_path) if os.path.exists(self.team_stats_path) else pd.DataFrame()
+            self.is_live = False
+            
         self.injury_manager = InjuryManager()
         self.std_dev = 11.5 # NBA League Average spread variance
+
+    def sync_live_data(self):
+        """Official Sync: Pull current ORtg/DRtg from NBA.com API"""
+        print("[SYNC] Fetching live institutional ratings...")
+        df = self.client.get_live_team_ratings()
+        if not df.empty:
+            self.team_df = df
+            self.is_live = True
+        return self.is_live
 
     def simulate_game(self, home_team_name: str, away_team_name: str, iterations=1000):
         """Runs Monte Carlo simulation for a single matchup"""

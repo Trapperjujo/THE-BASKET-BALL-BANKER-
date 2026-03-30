@@ -78,12 +78,24 @@ class NBAClient:
             
         return model_data
 
+    def get_live_team_ratings(self) -> pd.DataFrame:
+        """Fetch Official Advanced Team Metrics: ORtg, DRtg, Pace (2025-26)"""
+        from nba_api.stats.endpoints import leaguedashteamstats
+        print(f"[DATA] Fetching LIVE {self.season} Institutional Ratings...")
+        df = self._get_with_retry(leaguedashteamstats.LeagueDashTeamStats, 
+                                  season=self.season, 
+                                  measure_type_detailed_defense='Advanced')
+        if not df.empty:
+            df.to_csv(f"{self.cache_dir}/live_team_ratings_2026.csv", index=False)
+        return df
+
     def get_todays_games(self) -> pd.DataFrame:
-        """Fetch games scheduled for 'now' (based on current system time)"""
-        # System date: 2026-03-29
+        """Fetch games scheduled for today (2026-03-29) from official scoreboard"""
         game_date = "2026-03-29" 
-        print(f"[DATA] Fetching games for {game_date}...")
+        print(f"[DATA] Fetching Real Scoreboard for {game_date}...")
         df = self._get_with_retry(scoreboardv2.ScoreboardV2, day_offset='0', game_date=game_date)
+        if not df.empty:
+            df.to_csv(f"{self.cache_dir}/todays_scoreboard_2026.csv", index=False)
         return df
 
 if __name__ == "__main__":
