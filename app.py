@@ -285,8 +285,12 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
         
         prob_val = sim['home_win_prob'] / 100.0 if sim['home_win_prob'] > 50 else sim['away_win_prob'] / 100.0
         winner_name = m['home'] if sim['home_win_prob'] > 50 else m['away']
-        ev_val = (prob_val * (odds_val - 1.0)) - ((1.0 - prob_val) * 1.0)
+        
+        # Correctly extract from financial model dictionary
         stake_info = fin_model.get_smart_stake(prob_val, odds_val, ci_width)
+        suggested_stake = stake_info.get("suggested_stake_cad", 0.0)
+        ev_val = stake_info.get("ev", 0.0)
+        risk_score = "LOW" if prob_val > 0.65 else "MED" if prob_val > 0.55 else "HIGH"
         
         # 4. Identify Player Props
         path_p = "history/2026_season/player_advanced_2026.csv"
@@ -294,19 +298,23 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
         away_scorer, away_passer = "TBD", "TBD"
         
         if os.path.exists(path_p):
-            df_p = pd.read_csv(path_p)
-            def get_leaders(team_name):
-                nick = team_name.split()[-1]
-                roster = df_p[df_p['Team'].str.contains(nick, na=False, case=False)]
-                team_out = current_injuries.get(team_name, [])
-                roster = roster[~roster['Player'].isin(team_out)]
-                if roster.empty: return "TBD", "TBD"
-                top_s = roster.sort_values(by='USG%', ascending=False).iloc[0]['Player']
-                top_a = roster.sort_values(by='AST%', ascending=False).iloc[0]['Player']
-                return top_s, top_a
+            try:
+                df_p = pd.read_csv(path_p)
+                def get_leaders(team_name):
+                    nick = team_name.split()[-1]
+                    roster = df_p[df_p['Team'].str.contains(nick, na=False, case=False)]
+                    if roster.empty: return "TBD", "TBD"
+                    team_out = current_injuries.get(team_name, [])
+                    roster = roster[~roster['Player'].isin(team_out)]
+                    if roster.empty: return "TBD", "TBD"
+                    top_s = roster.sort_values(by='USG%', ascending=False).iloc[0]['Player']
+                    top_a = roster.sort_values(by='AST%', ascending=False).iloc[0]['Player']
+                    return str(top_s), str(top_a)
 
-            home_scorer, home_passer = get_leaders(m['home'])
-            away_scorer, away_passer = get_leaders(m['away'])
+                home_scorer, home_passer = get_leaders(m['home'])
+                away_scorer, away_passer = get_leaders(m['away'])
+            except:
+                pass
             
         preds.append({
             "home": m['home'], "away": m['away'], "winner": winner_name,
@@ -315,7 +323,7 @@ def load_predictions(bankroll_val, current_injuries, kelly_val):
             "away_scorer": away_scorer, "away_passer": away_passer,
             "prob": prob_val * 100, "mc_prob": prob_val * 100,
             "odds": odds_val, "ev": ev_val, "risk": risk_score,
-            "suggested_bet": stake_info
+            "suggested_bet": suggested_stake
         })
     
     return preds
