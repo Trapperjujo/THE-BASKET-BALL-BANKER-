@@ -1,0 +1,31 @@
+Conference,Team,W,L,PCT,GB,HOME,ROAD,CONF,DIV,STRK,L10
+Eastern,Detroit Pistons,54,20,.730,-,28-9,25-11,34-12,10-4,W2,8-2
+Eastern,Boston Celtics,49,24,.671,4.5,26-11,23-13,30-14,9-5,W2,7-3
+Eastern,New York Knicks,48,26,.649,6,27-9,20-17,31-16,12-3,L1,7-3
+Eastern,Cleveland Cavaliers,46,28,.622,8,24-14,22-14,30-18,10-5,W1,7-3
+Eastern,Toronto Raptors,41,32,.562,12.5,20-16,21-16,29-16,4-10,W1,5-5
+Eastern,Atlanta Hawks,42,33,.560,12.5,22-16,20-17,23-22,8-6,W1,8-2
+Eastern,Philadelphia 76ers,41,33,.554,13,21-17,20-16,24-23,9-7,W2,7-3
+Eastern,Orlando Magic,39,34,.534,14.5,22-14,16-18,24-23,9-7,W1,4-6
+Eastern,Charlotte Hornets,39,35,.527,15,19-18,20-17,23-23,11-5,L1,7-3
+Eastern,Miami Heat,39,36,.520,15.5,23-14,16-22,23-22,7-7,L2,3-7
+Eastern,Milwaukee Bucks,29,45,.392,25,16-21,13-24,20-27,9-6,L4,2-8
+Eastern,Chicago Bulls,29,45,.392,25,18-20,11-25,17-29,4-11,L3,3-7
+Eastern,Washington Wizards,17,56,.233,36.5,11-26,6-30,11-34,2-12,L1,1-9
+Eastern,Brooklyn Nets,17,57,.230,37,9-26,8-31,12-32,3-12,L10,0-10
+Eastern,Indiana Pacers,17,58,.227,37.5,11-27,6-31,13-33,3-10,W1,2-8
+Western,Oklahoma City Thunder,58,16,.784,-,30-6,28-9,37-9,11-3,W1,9-1
+Western,San Antonio Spurs,56,18,.757,2,28-7,27-11,32-14,12-3,W8,9-1
+Western,Los Angeles Lakers,48,26,.649,10,24-12,24-14,30-16,8-7,W2,9-1
+Western,Denver Nuggets,47,28,.627,11.5,23-13,24-15,29-16,8-5,W5,8-2
+Western,Minnesota Timberwolves,45,29,.608,13,25-14,20-15,28-21,9-7,L1,5-5
+Western,Houston Rockets,44,29,.603,13.5,25-10,19-19,24-22,8-6,W1,5-5
+Western,Phoenix Suns,41,33,.554,17,24-15,17-18,26-21,10-6,W1,4-6
+Western,LA Clippers,39,36,.520,19.5,21-15,18-21,22-23,8-6,W5,6-4
+Western,Portland Trail Blazers,37,38,.493,21.5,20-17,17-21,25-21,7-8,L1,6-4
+Western,Golden State Warriors,36,38,.486,22,21-15,15-23,23-22,6-6,W3,4-6
+Western,Memphis Grizzlies,25,49,.338,33,13-23,11-25,19-29,6-9,W1,2-8
+Western,New Orleans Pelicans,25,50,.333,33.5,16-22,9-28,16-30,7-8,L4,5-5
+Western,Dallas Mavericks,24,50,.324,34,14-23,10-26,13-33,4-11,W1,3-7
+Western,Utah Jazz,21,54,.280,37.5,13-25,8-29,11-35,1-13,L5,1-9
+Western,Sacramento Kings,19,56,.253,39.5,13-25,6-31,12-35,3-10,L3,4-6

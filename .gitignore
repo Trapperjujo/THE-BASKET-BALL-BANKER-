@@ -1,0 +1,17 @@
+# --- SECRETS (NEVER COMMIT) ---
+.env
+
+# --- CACHE & TEMP ---
+.tmp/
+__pycache__/
+execution/__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.streamlit/
+! .streamlit/config.toml
+
+# --- LOGS ---
+*.log
+
+# --- PROJECT DATA (Optional to ignore if too large) ---
+# history/2026_season/*.csv  <- We WANT to commit this one for now

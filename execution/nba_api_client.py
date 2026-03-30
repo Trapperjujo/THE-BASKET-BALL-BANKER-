@@ -51,13 +51,32 @@ class NBAClient:
             df.to_csv(f"{self.cache_dir}/standings_2026.csv", index=False)
         return df
 
-    def get_2026_player_stats(self) -> pd.DataFrame:
-        """Fetch current 2025-26 Player Stats for PER/TS%/USG% calculation"""
-        print(f"[DATA] Fetching TRUE {self.season} Player Statistics...")
-        df = self._get_with_retry(leaguedashplayerstats.LeagueDashPlayerStats, season=self.season)
-        if not df.empty:
-            df.to_csv(f"{self.cache_dir}/player_stats_2026.csv", index=False)
-        return df
+    def get_2026_full_data_model(self) -> Dict[str, pd.DataFrame]:
+        """Fetch complete Player and Team Metrics for Model Training/Analysis"""
+        print(f"[MODEL] Fetching Comprehensive {self.season} Data Model...")
+        
+        # 1. Player Advanced Stats (TS%, USG%, PER)
+        player_df = self._get_with_retry(leaguedashplayerstats.LeagueDashPlayerStats, 
+                                        season=self.season, 
+                                        measure_type_detailed_defense='Advanced')
+        
+        # 2. Team Advanced Stats (OffRTG, DefRTG, NetRTG, Pace)
+        from nba_api.stats.endpoints import leaguedashteamstats
+        team_df = self._get_with_retry(leaguedashteamstats.LeagueDashTeamStats, 
+                                      season=self.season, 
+                                      measure_type_detailed_defense='Advanced')
+        
+        model_data = {
+            "players": player_df,
+            "teams": team_df
+        }
+        
+        if not player_df.empty:
+            player_df.to_csv(f"{self.cache_dir}/full_players_2026.csv", index=False)
+        if not team_df.empty:
+            team_df.to_csv(f"{self.cache_dir}/full_teams_2026.csv", index=False)
+            
+        return model_data
 
     def get_todays_games(self) -> pd.DataFrame:
         """Fetch games scheduled for 'now' (based on current system time)"""
