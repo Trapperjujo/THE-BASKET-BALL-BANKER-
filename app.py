@@ -344,37 +344,44 @@ with tab1:
     
     if preds:
         for p in preds:
+            # Defensive check: Ensure p is a dictionary
+            if not isinstance(p, dict): continue
+            
             with st.container():
-                # Conditional styling based on EV (Expected Value)
-                ev_color = "#22c55e" if p['ev'] > 0.05 else "#94a3b8"
-                ev_tag = f"<span style='background: {ev_color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;'>+EV ALPHA: {p['ev']*100:.1f}%</span>" if p['ev'] > 0 else ""
+                # Defensive accessors with safe defaults
+                prob_val = p.get('prob', 50.0)
+                ev_val = p.get('ev', 0.0)
+                
+                # Dynamic Styling
+                ev_color = "#22c55e" if ev_val > 0.05 else "#94a3b8"
+                ev_tag = f"<span style='background: {ev_color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;'>+EV ALPHA: {ev_val*100:.1f}%</span>" if ev_val > 0 else ""
 
                 st.markdown(f"""
                 <div class="prediction-card">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="verdict-tag" style="background: #a855f7; color: white;">PRO-MODEL: {int(p['prob'])}% CONFIDENCE</span>
+                        <span class="verdict-tag" style="background: #a855f7; color: white;">PRO-MODEL: {int(prob_val)}% CONFIDENCE</span>
                         {ev_tag}
                     </div>
                     
-                    <h2 style='margin: 10px 0; font-size: 1.4rem;'>{p['away']} @ {p['home']}</h2>
+                    <h2 style='margin: 10px 0; font-size: 1.4rem;'>{p.get('away', 'Away')} @ {p.get('home', 'Home')}</h2>
                     
                     <div style="background: rgba(34, 211, 238, 0.1); padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px solid rgba(34, 211, 238, 0.2);">
                         <p style='margin:0; font-size: 0.85rem; color: #22d3ee; text-transform: uppercase; letter-spacing: 1px;'>🎯 PROJECTED FINAL</p>
                         <h1 style='margin:5px 0; font-size: 2.2rem; display: flex; justify-content: space-between;'>
-                            <span>{p['home']} {int(p['home_score'])}</span>
+                            <span>{p.get('home', 'Home')} {int(p.get('home_score', 0))}</span>
                             <span style='color: #94a3b8; font-size: 1.2rem; align-self: center;'>-</span>
-                            <span>{int(p['away_score'])} {p['away']}</span>
+                            <span>{int(p.get('away_score', 0))} {p.get('away', 'Away')}</span>
                         </h1>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                         <div>
                             <p class='metric-label'>Monte Carlo Prob</p>
-                            <p style='color: #a855f7; font-weight: bold; font-size: 1.3rem;'>{int(p['mc_prob'])}%</p>
+                            <p style='color: #a855f7; font-weight: bold; font-size: 1.3rem;'>{int(p.get('mc_prob', 50))}%</p>
                         </div>
                         <div>
                             <p class='metric-label'>Risk Score</p>
-                            <p style='color: #f87171; font-weight: bold; font-size: 1.3rem;'>{p['risk']}</p>
+                            <p style='color: #f87171; font-weight: bold; font-size: 1.3rem;'>{p.get('risk', 'N/A')}</p>
                         </div>
                     </div>
 
@@ -384,13 +391,13 @@ with tab1:
                         <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 15px;'>
                             <div>
                                 <p style='margin:0; font-size: 0.7rem; color: #94a3b8;'>HOME STAT LEADERS</p>
-                                <p style='margin:0; font-size: 0.85rem;'>🔥 {p['home_scorer']} (USG%)</p>
-                                <p style='margin:0; font-size: 0.85rem;'>🕹️ {p['home_passer']} (AST%)</p>
+                                <p style='margin:0; font-size: 0.85rem;'>🔥 {str(p.get('home_scorer', 'TBD'))} (USG%)</p>
+                                <p style='margin:0; font-size: 0.85rem;'>🕹️ {str(p.get('home_passer', 'TBD'))} (AST%)</p>
                             </div>
                             <div>
                                 <p style='margin:0; font-size: 0.7rem; color: #94a3b8;'>AWAY STAT LEADERS</p>
-                                <p style='margin:0; font-size: 0.85rem;'>🔥 {p['away_scorer']} (USG%)</p>
-                                <p style='margin:0; font-size: 0.85rem;'>🕹️ {p['away_passer']} (AST%)</p>
+                                <p style='margin:0; font-size: 0.85rem;'>🔥 {str(p.get('away_scorer', 'TBD'))} (USG%)</p>
+                                <p style='margin:0; font-size: 0.85rem;'>🕹️ {str(p.get('away_passer', 'TBD'))} (AST%)</p>
                             </div>
                         </div>
                     </div>
@@ -398,23 +405,23 @@ with tab1:
                     <div style="margin-top: 20px; padding: 15px; background: rgba(34, 211, 238, 0.05); border-radius: 12px; border: 1px solid rgba(34, 211, 238, 0.1);">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                             <span style='color: #94a3b8; font-size: 0.8rem;'>SUGGESTED WAGER</span>
-                            <span style='color: white; font-weight: bold;'>${p['suggested_bet']:.2f}</span>
+                            <span style='color: white; font-weight: bold;'>${float(p.get('suggested_bet', 0.0)):.2f}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                             <span style='color: #94a3b8; font-size: 0.8rem;'>PREDICTED PROFIT</span>
-                            <span style='color: #22c55e; font-weight: bold;'>+${(p['suggested_bet'] * (p['odds'] - 1)):.2f}</span>
+                            <span style='color: #22c55e; font-weight: bold;'>+${(float(p.get('suggested_bet', 0.0)) * (float(p.get('odds', 1.91)) - 1)):.2f}</span>
                         </div>
                         <hr style='border:0; border-top: 1px solid rgba(255,255,255,0.05); margin: 8px 0;'>
                         <div style="display: flex; justify-content: space-between;">
                             <span style='color: #22d3ee; font-weight: bold; font-size: 0.9rem;'>TOTAL RETURN</span>
-                            <span style='color: #22d3ee; font-weight: bold; font-size: 1.1rem;'>${(p['suggested_bet'] * p['odds']):.2f}</span>
+                            <span style='color: #22d3ee; font-weight: bold; font-size: 1.1rem;'>${(float(p.get('suggested_bet', 0.0)) * float(p.get('odds', 1.91))):.2f}</span>
                         </div>
                     </div>
 
                     <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <p class='metric-label'>Market Price (H2H)</p>
-                            <p style='margin:0; font-size: 1.2rem; font-weight: bold;'>{p['odds']}</p>
+                            <p style='margin:0; font-size: 1.2rem; font-weight: bold;'>{p.get('odds', 1.91)}</p>
                         </div>
                         <div style='text-align: right;'>
                             <p class='metric-label'>SMART STAKE (KELLY)</p>
