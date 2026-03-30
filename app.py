@@ -64,13 +64,18 @@ st.markdown("""
         font-size: 0.8rem;
     }
     
-    /* Prediction Card Specifics */
-    .prediction-card {
-        background: rgba(255, 255, 255, 0.03);
+    /* Metric Description Card */
+    .metric-card {
+        background: rgba(255, 255, 255, 0.04);
         border-radius: 12px;
         padding: 15px;
-        border-left: 4px solid #22d3ee; /* Neon Cyan */
+        border-left: 3px solid #f58426; /* NBA Orange */
         margin-bottom: 20px;
+        transition: transform 0.2s;
+    }
+    .metric-card:hover {
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.06);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -289,23 +294,40 @@ with tab3:
         st.error("Standings data not found.")
 
 with tab4:
-    st.write("### ⚡ Advanced Metrics Leaderboard")
+    st.write("### ⚡ Player Analytics Intelligence")
     
-    with st.expander("📊 Analytics Legend & Key"):
-        st.markdown("""
-        #### How to Interpret Advanced NBA Metrics
-        
-        | Metric | Definition | Banker's Tip |
-| :--- | :--- | :--- |
-| **PER** | **Player Efficiency Rating**: Per-minute productivity (League Avg = 15.0). | Identifies dominant performers regardless of pure scoring volume. |
-| **TS%** | **True Shooting %**: Measures scoring efficiency including 3PT and FT. | Crucial for over/under point props—efficiency usually beats volume. |
-| **USG%** | **Usage Rate**: Percentage of team plays used by a player. | **High Usage + Teammate Injury = MASSIVE volume spike** for props. |
-| **BPM** | **Box Plus/Minus**: Box-score estimate of impact per 100 possessions. | Highlights elite defenders or "super-role" players. |
-| **VORP** | **Value Over Replacement**: Cumulative impact relative to an average backup. | Best for long-term MVP-caliber player valuation. |
-
----
-**Strategy**: Look for **High Usage (USG%)** players with **High Efficiency (TS%)**—these are the "Banker's" primary targets for statistical consistency.
-        """)
+    with st.expander("📖 BANKER'S PRO-METRIC GUIDE", expanded=False):
+        st.write("Use these benchmarks to identify institutional-grade value and alpha in the player market.")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            <div class="metric-card">
+                <h4 style='color: #f58426; margin:0;'>🎯 PER (Efficiency)</h4>
+                <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 15.0 Avg | 20.0 All-Star | 25.0 MVP</p>
+                <p style='font-size: 0.9rem;'>Holistic per-minute production. Perfect for identifying under-utilized bench stars who deserve more minutes.</p>
+            </div>
+            <div class="metric-card">
+                <h4 style='color: #22d3ee; margin:0;'>🔥 TS% (True Shooting)</h4>
+                <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 0.62+ Elite | 0.58 Good | < 0.54 Poor</p>
+                <p style='font-size: 0.9rem;'>The ultimate measure of scoring efficiency—factors in 2PT, 3PT, and FT volume into one number.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col2:
+            st.markdown("""
+            <div class="metric-card">
+                <h4 style='color: #a855f7; margin:0;'>🕹️ USG% (Usage)</h4>
+                <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 30%+ Alpha | 20% Starter | < 15% Role</p>
+                <p style='font-size: 0.9rem;'>Volume metric. Identifies who handles the rock. Essential for projecting stat spikes when teammates are injured.</p>
+            </div>
+            <div class="metric-card">
+                <h4 style='color: #22c55e; margin:0;'>🛡️ VORP / BPM</h4>
+                <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 4.0+ VORP | 6.0+ BPM (Elite)</p>
+                <p style='font-size: 0.9rem;'>Impact relative to a replacement player. Identifies the true "Engines" that drive team win probability.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.info("💡 **PRO-BETTING ALPHA**: Look for players with **High USG%** and **High TS%**. If a teammate is marked as **OUT** in the Sidebar Injury Reporter, these players are primed for a massive points/usage spike.")
         
     path = "history/2026_season/player_advanced_2026.csv"
     if os.path.exists(path):
