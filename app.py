@@ -94,7 +94,12 @@ with st.sidebar:
     st.divider()
     
     bankroll = st.number_input("Total Bankroll (CAD)", value=1000.0, step=100.0)
-    st.info("Applying Financial Decision Model (0.25 Kelly Base)")
+    kelly_val = st.select_slider(
+        "Risk Profile (Kelly Selection)",
+        options=[0.25, 0.50, 1.00],
+        value=0.25,
+        help="Institutional betting strategy: 0.25 = Conservative (Quarter Kelly) | 0.50 = Balanced (Half) | 1.00 = Strategic (Full Kelly)"
+    )
     
     st.divider()
     with st.expander("🏥 SIMULATE INJURY REPORT"):
@@ -164,9 +169,9 @@ def load_standings():
         return pd.DataFrame()
 
 @st.cache_data
-def load_predictions(bankroll_val, current_injuries):
+def load_predictions(bankroll_val, current_injuries, kelly_val):
     mc_engine = MonteCarloEngine()
-    fin_model = FinancialDecisionModel(bankroll=bankroll_val)
+    fin_model = FinancialDecisionModel(bankroll=bankroll_val, kelly_fraction=kelly_val)
     
     # Apply session injuries to manager
     for team, p_list in current_injuries.items():
@@ -200,26 +205,15 @@ def load_predictions(bankroll_val, current_injuries):
 st.title("🏀 NBA ALPHA COMMAND CENTER")
 st.subheader("TRUE 2025-26 Season Insights")
 
-tab1, tab2, tab3, tab4 = st.tabs(["AI Predictions 🎯", "Playoff Simulation 🏆", "League Standings 📈", "Advanced Research ⚡"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["AI Predictions 🎯", "Playoff Sim 🏆", "Standings 📈", "Research ⚡", "PRO-METRIC GUIDE 📖"])
 
 with tab1:
     st.write("### Institutional Prediction Feed")
     
-    with st.expander("📖 Dashboard Legend & User Guide"):
-        st.markdown("""
-        #### Understanding the NBA Alpha Terminal
+    with st.expander("📖 Dashboard Legend"):
+        st.write("For in-depth metric strategies, visit the **PRO-METRIC GUIDE** tab.")
         
-        *   **Heuristic Prob**: Base model confidence derived from Team EPM and historical matchups. It sets the baseline expectation.
-        *   **Monte Carlo Prob**: Probabilistic confidence from 1,000+ simulations. This accounts for team volatility and Gaussian distribution of outcomes.
-        *   **Risk Score (0.0 - 1.0)**: Measures simulation variance. A high score means the simulation results were widely spread (high uncertainty).
-        *   **Market Price**: The current decimal odds from the bookmaker.
-        *   **🎯 SMART STAKE**: The mathematically optimal wager in CAD using a **0.25 Adjusted Kelly Criterion**. It factors in your bankroll and the simulation's risk to maximize long-term growth.
-        
-        ---
-        **Strategy**: Look for games where **Monte Carlo Prob** is >10% higher than the implied market odds for maximum +EV value.
-        """)
-        
-    preds = load_predictions(bankroll, st.session_state.out_players)
+    preds = load_predictions(bankroll, st.session_state.out_players, kelly_val)
     
     if preds:
         for p in preds:
@@ -294,42 +288,55 @@ with tab3:
         st.error("Standings data not found.")
 
 with tab4:
-    st.write("### ⚡ Player Analytics Intelligence")
-    
-    with st.expander("📖 BANKER'S PRO-METRIC GUIDE", expanded=False):
-        st.write("Use these benchmarks to identify institutional-grade value and alpha in the player market.")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("""
-            <div class="metric-card">
-                <h4 style='color: #f58426; margin:0;'>🎯 PER (Efficiency)</h4>
-                <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 15.0 Avg | 20.0 All-Star | 25.0 MVP</p>
-                <p style='font-size: 0.9rem;'>Holistic per-minute production. Perfect for identifying under-utilized bench stars who deserve more minutes.</p>
-            </div>
-            <div class="metric-card">
-                <h4 style='color: #22d3ee; margin:0;'>🔥 TS% (True Shooting)</h4>
-                <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 0.62+ Elite | 0.58 Good | < 0.54 Poor</p>
-                <p style='font-size: 0.9rem;'>The ultimate measure of scoring efficiency—factors in 2PT, 3PT, and FT volume into one number.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col2:
-            st.markdown("""
-            <div class="metric-card">
-                <h4 style='color: #a855f7; margin:0;'>🕹️ USG% (Usage)</h4>
-                <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 30%+ Alpha | 20% Starter | < 15% Role</p>
-                <p style='font-size: 0.9rem;'>Volume metric. Identifies who handles the rock. Essential for projecting stat spikes when teammates are injured.</p>
-            </div>
-            <div class="metric-card">
-                <h4 style='color: #22c55e; margin:0;'>🛡️ VORP / BPM</h4>
-                <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 4.0+ VORP | 6.0+ BPM (Elite)</p>
-                <p style='font-size: 0.9rem;'>Impact relative to a replacement player. Identifies the true "Engines" that drive team win probability.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        st.info("💡 **PRO-BETTING ALPHA**: Look for players with **High USG%** and **High TS%**. If a teammate is marked as **OUT** in the Sidebar Injury Reporter, these players are primed for a massive points/usage spike.")
-        
+    st.write("### ⚡ Player Analytics Leaderboard")
     path = "history/2026_season/player_advanced_2026.csv"
+    if os.path.exists(path):
+        df_players = pd.read_csv(path)
+        st.dataframe(df_players[['Player', 'Team', 'PER', 'TS%', 'USG%', 'BPM', 'VORP']].sort_values(by='PER', ascending=False).head(50), use_container_width=True)
+    else:
+        st.warning("Stats file missing. Run scraper.")
+
+with tab5:
+    st.write("### 📖 PRO-METRIC STRATEGY GUIDE")
+    st.write("Master the institutional metrics used to identify alpha in the player market.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        <div class="metric-card">
+            <h4 style='color: #f58426; margin:0;'>🎯 PER (Efficiency)</h4>
+            <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 15.0 Avg | 20.0 All-Star | 25.0 MVP</p>
+            <p style='font-size: 0.9rem;'>Holistic per-minute production. Perfect for identifying under-utilized bench stars who deserve more minutes.</p>
+        </div>
+        <div class="metric-card">
+            <h4 style='color: #22d3ee; margin:0;'>🔥 TS% (True Shooting)</h4>
+            <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 0.62+ Elite | 0.58 Good | < 0.54 Poor</p>
+            <p style='font-size: 0.9rem;'>The ultimate measure of scoring efficiency—factors in 2PT, 3PT, and FT volume into one number.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col2:
+        st.markdown("""
+        <div class="metric-card">
+            <h4 style='color: #a855f7; margin:0;'>🕹️ USG% (Usage)</h4>
+            <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 30%+ Alpha | 20% Starter | < 15% Role</p>
+            <p style='font-size: 0.9rem;'>Volume metric. Identifies who handles the rock. Essential for projecting stat spikes when teammates are injured.</p>
+        </div>
+        <div class="metric-card">
+            <h4 style='color: #22c55e; margin:0;'>🛡️ VORP / BPM</h4>
+            <p style='font-size: 0.8rem; color: #94a3b8; margin: 5px 0;'><b>Tier:</b> 4.0+ VORP | 6.0+ BPM (Elite)</p>
+            <p style='font-size: 0.9rem;'>Impact relative to a replacement player. Identifies the true "Engines" that drive team win probability.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.success("🧠 **STRATEGIC ALPHA: THE USAGE SPIKE**")
+    st.write("""
+    The most profitable use of this dashboard is identifying **Usage Vacuum**. When a star player is marked **OUT** in the Sidebar Injury Reporter, their **USG% (Usage)** must be redistributed.
+    
+    1. Look for players on that team with **High Efficiency (TS%)** but **Low Usage (USG%)**. 
+    2. These "hidden alphas" are now primed for a massive statistical spike. 
+    3. Use this to find value in over/under player props before the market adjusts.
+    """)
     if os.path.exists(path):
         df_players = pd.read_csv(path)
         st.dataframe(df_players[['Player', 'Team', 'PER', 'TS%', 'USG%', 'BPM', 'VORP']].sort_values(by='PER', ascending=False).head(50), use_container_width=True)

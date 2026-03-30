@@ -6,9 +6,10 @@ class FinancialDecisionModel:
     Focuses on Risk Management, Credit/Cost of Capital (Bankroll), and Cost-Benefit.
     """
     
-    def __init__(self, bankroll=1000.0, max_drawdown=0.20):
+    def __init__(self, bankroll=1000.0, max_drawdown=0.20, kelly_fraction=0.25):
         self.bankroll = bankroll
         self.max_drawdown = max_drawdown # Risk tolerance (20% max)
+        self.kelly_fraction = kelly_fraction # e.g. 0.25, 0.5, 1.0
 
     def calculate_cost_benefit(self, prob, odds):
         """
@@ -33,7 +34,7 @@ class FinancialDecisionModel:
         # If the simulation variance is high (wide CI), we reduce the stake.
         # institutional 'fractional Kelly' approach
         volatility_penalty = 1.0 - (min(confidence_interval_width, 15.0) / 30.0)
-        smart_kelly = kelly * 0.25 * volatility_penalty # Quarter Kelly baseline
+        smart_kelly = kelly * self.kelly_fraction * volatility_penalty # Base Kelly control
         
         # Ensure we don't exceed max drawdown
         suggested_stake = max(0.0, self.bankroll * smart_kelly)
